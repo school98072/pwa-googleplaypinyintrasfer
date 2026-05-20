@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="汉字拼音">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#4F46E5">
+    <title>汉字转拼音</title>
+
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+    <script src="https://unpkg.com/pinyin-pro@3.18.2/dist/index.js"></script>
+
+    <style>
+        :root {
+            --p1: #4F46E5;
+            --p2: #7C3AED;
+            --grad: linear-gradient(135deg, var(--p1) 0%, var(--p2) 100%);
+            --safe-t: env(safe-area-inset-top,    0px);
+            --safe-b: env(safe-area-inset-bottom, 0px);
+            --safe-l: env(safe-area-inset-left,   0px);
+            --safe-r: env(safe-area-inset-right,  0px);
+            --bg:      #F2F2F7;
+            --surface: #FFFFFF;
+            --text1:   #1C1C1E;
+            --text2:   #6B7280;
+            --sep:     #E5E5EA;
+            --shadow:  0 2px 10px rgba(0,0,0,.07);
+            --r:       18px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #000; --surface: #1C1C1E;
+                --text1: #F2F2F7; --text2: #8E8E93; --sep: #38383A;
+            }
+        }
+        *, *::before, *::after {
+            margin: 0; padding: 0; box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+            background: var(--bg);
+            display: flex; flex-direction: column;
+            position: fixed; inset: 0;
+        }
+
+        /* ── 启动画面 ── */
+        #splash {
+            position: fixed; inset: 0;
+            background: var(--grad);
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999;
+            transition: opacity .4s ease, transform .4s ease;
+        }
+        #splash.out { opacity: 0; transform: scale(1.04); pointer-events: none; }
+        .sp-icon {
+            width: 108px; height: 108px;
+            background: rgba(255,255,255,.18); border-radius: 26px;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            margin-bottom: 22px;
+            box-shadow: 0 8px 32px rgba(0,0,0,.2);
+        }
+        .sp-icon b    { font-size: 50px; color: #fff; line-height: 1; }
+        .sp-icon span { font-size: 20px; color: rgba(255,255,255,.75); margin-top: 2px; }
+        #splash h1 { color: #fff; font-size: 22px; font-weight: 700; }
+        #splash p  { color: rgba(255,255,255,.65); font-size: 13px; margin-top: 6px; }
+        .sp-dots { display: flex; gap: 6px; margin-top: 40px; }
+        .sp-dots i {
+            width: 6px; height: 6px; border-radius: 50%;
+            background: rgba(255,255,255,.4);
+            animation: blink 1.2s ease-in-out infinite; font-style: normal;
+        }
+        .sp-dots i:nth-child(2) { animation-delay: .2s; }
+        .sp-dots i:nth-child(3) { animation-delay: .4s; }
+        @keyframes blink { 0%,80%,100%{opacity:.3;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+
+        /* ── 导航栏 ── */
+        header {
+            background: var(--grad);
+            padding-top: calc(var(--safe-t) + 14px); padding-bottom: 14px;
+            padding-left: calc(var(--safe-l) + 20px); padding-right: calc(var(--safe-r) + 20px);
+            color: #fff; text-align: center; flex-shrink: 0;
+        }
+        header h1 { font-size: 19px; font-weight: 700; }
+        header p  { font-size: 12px; opacity: .75; margin-top: 2px; }
+
+        /* ── 主体 ── */
+        main {
+            flex: 1; overflow-y: auto;
+            -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+            padding: 14px;
+            padding-left: calc(var(--safe-l) + 14px); padding-right: calc(var(--safe-r) + 14px);
+            padding-bottom: calc(var(--safe-b) + 20px);
+        }
+
+        /* ── 卡片 ── */
+        .card {
+            background: var(--surface); border-radius: var(--r);
+            padding: 14px 16px; margin-bottom: 11px; box-shadow: var(--shadow);
+        }
+        .lbl { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text2); margin-bottom: 9px; }
+
+        #inputText {
+            width: 100%; min-height: 88px; max-height: 170px;
+            border: none; outline: none; resize: none;
+            font-size: 17px; line-height: 1.55; font-family: inherit;
+            color: var(--text1); background: transparent; overflow-y: auto;
+        }
+        #inputText::placeholder { color: #C7C7CC; }
+
+        #outputText {
+            min-height: 58px; font-size: 17px; line-height: 1.6;
+            color: var(--text1); word-break: break-all; white-space: pre-wrap;
+        }
+        .ph { color: #C7C7CC; font-size: 15px; }
+
+        /* ── 按钮 ── */
+        .btn-main {
+            width: 100%; padding: 15px; background: var(--grad);
+            color: #fff; border: none; border-radius: 14px;
+            font-size: 17px; font-weight: 600; font-family: inherit; cursor: pointer;
+            margin-bottom: 10px; box-shadow: 0 4px 16px rgba(79,70,229,.45);
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: opacity .15s, transform .12s;
+        }
+        .btn-main:active { opacity: .88; transform: scale(.985); }
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 11px; }
+        .btn-sec {
+            padding: 13px; background: var(--surface);
+            border: none; border-radius: 12px;
+            font-size: 15px; font-weight: 500; font-family: inherit; cursor: pointer;
+            color: var(--p1); box-shadow: var(--shadow);
+            transition: opacity .15s, transform .12s;
+        }
+        .btn-sec:active { opacity: .75; transform: scale(.97); }
+
+        /* ── 选项 ── */
+        .opt-card {
+            background: var(--surface); border-radius: var(--r);
+            overflow: hidden; margin-bottom: 11px; box-shadow: var(--shadow);
+        }
+        .opt-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 13px 16px; border-bottom: 1px solid var(--sep);
+        }
+        .opt-row:last-child { border-bottom: none; }
+        .opt-lbl { font-size: 15px; color: var(--text1); }
+
+        .tog { position: relative; width: 51px; height: 31px; cursor: pointer; }
+        .tog input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .tog-track { position: absolute; inset: 0; background: #E5E5EA; border-radius: 31px; transition: background .25s; }
+        .tog input:checked ~ .tog-track { background: #34C759; }
+        .tog-thumb {
+            position: absolute; top: 2px; left: 2px; width: 27px; height: 27px;
+            background: #fff; border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,.22);
+            transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+        }
+        .tog input:checked ~ .tog-thumb { transform: translateX(20px); }
+
+        .sel {
+            appearance: none; -webkit-appearance: none;
+            border: none; outline: none; background: #EFEFF4; border-radius: 8px;
+            padding: 6px 26px 6px 10px; font-size: 14px; font-weight: 600;
+            color: var(--p1); font-family: inherit; cursor: pointer;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234F46E5' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat; background-position: right 8px center;
+        }
+        @media (prefers-color-scheme: dark) { .sel { background-color: #2C2C2E; } }
+
+        /* ── 统计 ── */
+        .stats {
+            background: var(--surface); border-radius: var(--r);
+            padding: 14px 8px; display: grid; grid-template-columns: repeat(3,1fr);
+            margin-bottom: 11px; box-shadow: var(--shadow);
+        }
+        .stat { text-align: center; }
+        .stat-v { font-size: 28px; font-weight: 700; color: var(--p1); line-height: 1; }
+        .stat-l { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+        /* ── Toast ── */
+        #toast {
+            position: fixed; bottom: calc(var(--safe-b) + 26px); left: 50%;
+            transform: translateX(-50%) translateY(60px);
+            background: rgba(0,0,0,.72); backdrop-filter: blur(12px);
+            color: #fff; padding: 9px 22px; border-radius: 20px;
+            font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none;
+            transition: opacity .25s, transform .25s cubic-bezier(.34,1.56,.64,1);
+            z-index: 1000; white-space: nowrap;
+        }
+        #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+        .pulsing { animation: pulse .9s ease infinite; }
+    </style>
+</head>
+<body>
+
+<div id="splash">
+    <div class="sp-icon"><b>拼</b><span>音</span></div>
+    <h1>汉字转拼音</h1>
+    <p>快速 · 准确 · 离线可用</p>
+    <div class="sp-dots"><i></i><i></i><i></i></div>
+</div>
+
+<header>
+    <h1>汉字转拼音</h1>
+    <p>快速、准确的拼音转换工具</p>
+</header>
+
+<main>
+    <div class="card">
+        <div class="lbl">输入汉字</div>
+        <textarea id="inputText" placeholder="请输入要转换的汉字…&#10;例如：你好世界"></textarea>
+    </div>
+
+    <button class="btn-main" id="convertBtn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+        </svg>
+        开始转换
+    </button>
+
+    <div class="btn-row">
+        <button class="btn-sec" id="clearBtn">🗑️ 清除</button>
+        <button class="btn-sec" id="copyBtn">📋 复制拼音</button>
+    </div>
+
+    <div class="opt-card">
+        <div class="opt-row">
+            <span class="opt-lbl">显示声调</span>
+            <label class="tog">
+                <input type="checkbox" id="showTone" checked>
+                <div class="tog-track"></div><div class="tog-thumb"></div>
+            </label>
+        </div>
+        <div class="opt-row">
+            <span class="opt-lbl">拼音风格</span>
+            <select class="sel" id="toneType">
+                <option value="symbol">符号 nǐ hǎo</option>
+                <option value="num">数字 ni3 hao3</option>
+                <option value="none">无声调 ni hao</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="lbl">拼音结果</div>
+        <div id="outputText"><span class="ph">转换后的拼音将显示在这里…</span></div>
+    </div>
+
+    <div class="stats">
+        <div class="stat"><div class="stat-v" id="charCount">0</div><div class="stat-l">字符数</div></div>
+        <div class="stat"><div class="stat-v" id="hanziCount">0</div><div class="stat-l">汉字数</div></div>
+        <div class="stat"><div class="stat-v" id="pinyinCount">0</div><div class="stat-l">拼音数</div></div>
+    </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+/* ── 启动画面 ── */
+window.addEventListener('load', function() {
+    setTimeout(function() {
+        var sp = document.getElementById('splash');
+        sp.classList.add('out');
+        setTimeout(function() { sp.remove(); }, 450);
+    }, 1400);
+});
+
+/* ── Service Worker 注册 ── */
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
+}
+
+/* ── 核心逻辑 ── */
+var pinyin = (typeof pinyinPro !== 'undefined') ? pinyinPro.pinyin : null;
+
+var inputEl    = document.getElementById('inputText');
+var outputEl   = document.getElementById('outputText');
+var convertBtn = document.getElementById('convertBtn');
+var clearBtn   = document.getElementById('clearBtn');
+var copyBtn    = document.getElementById('copyBtn');
+var showToneEl = document.getElementById('showTone');
+var toneTypeEl = document.getElementById('toneType');
+var toastEl    = document.getElementById('toast');
+var charEl     = document.getElementById('charCount');
+var hanziEl    = document.getElementById('hanziCount');
+var pinyinEl   = document.getElementById('pinyinCount');
+var toastTimer;
+
+function showToast(msg) {
+    clearTimeout(toastTimer);
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    toastTimer = setTimeout(function() { toastEl.classList.remove('on'); }, 2200);
+}
+
+function updateStats(text, result) {
+    charEl.textContent  = text.length;
+    var hz = text.match(/[一-龥]/g);
+    hanziEl.textContent = hz ? hz.length : 0;
+    var py = result ? result.trim().split(/\s+/).filter(Boolean) : [];
+    pinyinEl.textContent = py.length;
+}
+
+function doConvert() {
+    if (!pinyin) { showToast('⚠️ 拼音库未加载，请检查网络'); return; }
+    var text = inputEl.value.trim();
+    if (!text) { showToast('请先输入汉字'); return; }
+    convertBtn.classList.add('pulsing');
+    var showT = showToneEl.checked;
+    var tone = 'symbol';
+    if (!showT)                          tone = 'none';
+    else if (toneTypeEl.value === 'num') tone = 'num';
+    else if (toneTypeEl.value === 'none')tone = 'none';
+    try {
+        var result = pinyin(text, { toneType: tone, type: 'string', nonZh: 'consecutive' });
+        outputEl.textContent = result;
+        updateStats(text, result);
+        showToast('✓ 转换完成');
+    } catch(e) {
+        showToast('转换出错，请重试');
+    }
+    convertBtn.classList.remove('pulsing');
+}
+
+function doClear() {
+    inputEl.value = '';
+    outputEl.innerHTML = '<span class="ph">转换后的拼音将显示在这里…</span>';
+    updateStats('', '');
+    inputEl.focus();
+    showToast('已清除');
+}
+
+async function doCopy() {
+    var text = outputEl.textContent.trim();
+    if (!text || text === '转换后的拼音将显示在这里…') { showToast('没有可复制的内容'); return; }
+    try {
+        await navigator.clipboard.writeText(text);
+        showToast('✓ 已复制到剪贴板');
+    } catch(e) {
+        var tmp = document.createElement('textarea');
+        tmp.value = text; tmp.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(tmp); tmp.select();
+        document.execCommand('copy'); document.body.removeChild(tmp);
+        showToast('✓ 已复制到剪贴板');
+    }
+}
+
+convertBtn.addEventListener('click', doConvert);
+clearBtn.addEventListener('click', doClear);
+copyBtn.addEventListener('click', doCopy);
+inputEl.addEventListener('input', function() { updateStats(inputEl.value, outputEl.textContent); });
+showToneEl.addEventListener('change', function() { if (inputEl.value.trim()) doConvert(); });
+toneTypeEl.addEventListener('change', function() { if (inputEl.value.trim()) doConvert(); });
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doConvert();
+    if (e.key === 'Escape') doClear();
+});
+</script>
+</body>
+</html>

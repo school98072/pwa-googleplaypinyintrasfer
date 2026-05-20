@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>离线 · 汉字转拼音</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+    background: linear-gradient(135deg, #4F46E5, #7C3AED);
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    color: white; text-align: center; padding: 20px;
+  }
+  .icon { font-size: 80px; margin-bottom: 20px; }
+  h1 { font-size: 24px; margin-bottom: 12px; }
+  p  { font-size: 15px; opacity: .8; margin-bottom: 32px; }
+  button {
+    background: rgba(255,255,255,.2);
+    border: 2px solid rgba(255,255,255,.5);
+    color: white; padding: 12px 28px;
+    border-radius: 12px; font-size: 16px;
+    font-family: inherit; cursor: pointer;
+  }
+  button:active { opacity: .8; }
+</style>
+</head>
+<body>
+  <div class="icon">📡</div>
+  <h1>当前处于离线状态</h1>
+  <p>请检查网络连接后重试<br>已缓存的功能仍可正常使用</p>
+  <button onclick="location.reload()">重新连接</button>
+</body>
+</html>
