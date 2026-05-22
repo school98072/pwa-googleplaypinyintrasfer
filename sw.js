@@ -1,13 +1,14 @@
 // Service Worker — 汉字转拼音 PWA
-const CACHE_NAME = 'pinyin-pwa-v2';
+const CACHE_NAME = 'pinyin-pwa-v3';
 
+const BASE = '/pwa-googleplaypinyintrasfer';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/pinyin-pro.js'
+  BASE + '/',
+  BASE + '/index.html',
+  BASE + '/manifest.json',
+  BASE + '/icon-192.png',
+  BASE + '/icon-512.png',
+  BASE + '/pinyin-pro.js'
 ];
 
 // 安装：预缓存所有资源
