@@ -14,7 +14,7 @@
     <link rel="apple-touch-icon" href="icon-512.png">
     <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 
-    <script src="https://unpkg.com/pinyin-pro@3.18.2/dist/index.js"></script>
+    <script src="pinyin-pro.js"></script>
 
     <style>
         :root {
@@ -34,10 +34,16 @@
             --r:       18px;
         }
         @media (prefers-color-scheme: dark) {
-            :root {
+            html:not(.force-light) {
                 --bg: #000; --surface: #1C1C1E;
                 --text1: #F2F2F7; --text2: #8E8E93; --sep: #38383A;
+                --shadow: 0 2px 10px rgba(0,0,0,.3);
             }
+        }
+        html.force-dark {
+            --bg: #000; --surface: #1C1C1E;
+            --text1: #F2F2F7; --text2: #8E8E93; --sep: #38383A;
+            --shadow: 0 2px 10px rgba(0,0,0,.3);
         }
         *, *::before, *::after {
             margin: 0; padding: 0; box-sizing: border-box;
@@ -87,11 +93,38 @@
         header {
             background: var(--grad);
             padding-top: calc(var(--safe-t) + 14px); padding-bottom: 14px;
-            padding-left: calc(var(--safe-l) + 20px); padding-right: calc(var(--safe-r) + 20px);
-            color: #fff; text-align: center; flex-shrink: 0;
+            padding-left: calc(var(--safe-l) + 12px); padding-right: calc(var(--safe-r) + 12px);
+            color: #fff; flex-shrink: 0;
+            display: flex; align-items: center;
         }
+        .hdr-spacer { width: 44px; flex-shrink: 0; }
+        .hdr-center { flex: 1; text-align: center; }
         header h1 { font-size: 19px; font-weight: 700; }
         header p  { font-size: 12px; opacity: .75; margin-top: 2px; }
+
+        /* ── 语言切换 ── */
+        .lang-btn {
+            width: 44px; height: 44px; flex-shrink: 0;
+            background: rgba(255,255,255,.18); border: none; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: #fff; transition: background .18s;
+        }
+        .lang-btn:active { background: rgba(255,255,255,.35); }
+        .lang-backdrop { position: fixed; inset: 0; z-index: 400; }
+        .lang-menu {
+            position: fixed; top: calc(var(--safe-t) + 66px); right: 12px;
+            background: var(--surface); border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.1);
+            overflow: hidden; min-width: 172px; z-index: 401;
+        }
+        .lang-opt {
+            padding: 13px 18px; font-size: 15px; cursor: pointer;
+            color: var(--text1); transition: background .15s;
+            border-bottom: 1px solid var(--sep);
+        }
+        .lang-opt:last-child { border-bottom: none; }
+        .lang-opt:active { background: var(--bg); }
+        .lang-opt.active { color: var(--p1); font-weight: 600; }
 
         /* ── 主体 ── */
         main {
@@ -174,7 +207,33 @@
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%234F46E5' stroke-width='3'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
             background-repeat: no-repeat; background-position: right 8px center;
         }
-        @media (prefers-color-scheme: dark) { .sel { background-color: #2C2C2E; } }
+        @media (prefers-color-scheme: dark) { html:not(.force-light) .sel { background-color: #2C2C2E; } }
+        html.force-dark .sel { background-color: #2C2C2E; }
+
+        /* ── 深色模式切换按钮 ── */
+        .dark-btn {
+            width: 44px; height: 44px; flex-shrink: 0;
+            background: rgba(255,255,255,.18); border: none; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: #fff; transition: background .18s;
+        }
+        .dark-btn:active { background: rgba(255,255,255,.35); }
+
+        /* ── 输出卡标题行（含收藏按钮）── */
+        .card-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
+        .card-hdr .lbl { margin-bottom: 0; }
+        .star-btn { background: none; border: none; cursor: pointer; color: var(--text2); padding: 4px; border-radius: 50%; transition: color .2s, transform .15s; flex-shrink: 0; }
+        .star-btn.active { color: #F59E0B; }
+        .star-btn:active { transform: scale(1.25); }
+
+        /* ── 收藏夹条目 ── */
+        .fav-item { display: flex; align-items: center; padding: 11px 16px; border-bottom: 1px solid var(--sep); }
+        .fav-item:last-child { border-bottom: none; }
+        .fav-content { flex: 1; min-width: 0; cursor: pointer; }
+        .fav-in { font-size: 14px; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fav-out { font-size: 12px; color: var(--text2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .fav-del { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 22px; line-height: 1; padding: 0 0 0 10px; opacity: .5; flex-shrink: 0; }
+        .fav-del:active { opacity: 1; }
 
         /* ── 统计 ── */
         .stats {
@@ -200,73 +259,453 @@
 
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.55} }
         .pulsing { animation: pulse .9s ease infinite; }
+
+        /* ── 对照视图 ── */
+        .ruby-wrap { font-size: 15px; line-height: 2.6; word-break: break-all; }
+        ruby { display: inline-flex; flex-direction: column-reverse; align-items: center; margin: 0 1px; }
+        rt { font-size: 11px; color: var(--p1); line-height: 1; margin-bottom: 2px; white-space: nowrap; }
+
+        /* ── 历史记录 ── */
+        .hist-card { background: var(--surface); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); }
+        .hist-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; border-bottom: 1px solid var(--sep); }
+        .hist-title { font-size: 15px; font-weight: 600; color: var(--text1); }
+        .hist-clear { font-size: 13px; color: var(--text2); background: none; border: none; cursor: pointer; font-family: inherit; padding: 0; }
+        .hist-item { display: flex; flex-direction: column; padding: 11px 16px; border-bottom: 1px solid var(--sep); cursor: pointer; transition: background .15s; }
+        .hist-item:last-child { border-bottom: none; }
+        .hist-item:active { background: var(--bg); }
+        .hist-in { font-size: 14px; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-out { font-size: 12px; color: var(--text2); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hist-time { font-size: 11px; color: var(--text2); opacity: .65; margin-top: 2px; }
+        .hist-empty { padding: 24px 16px; text-align: center; color: var(--text2); font-size: 14px; }
+
+        /* ── 注音拼音对照表 ── */
+        .ref-card { background: var(--surface); border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); margin-top: 11px; }
+        .ref-banner { background: var(--grad); padding: 14px 16px; text-align: center; }
+        .ref-banner-title { color: #fff; font-size: 16px; font-weight: 700; }
+        .ref-banner-sub { color: rgba(255,255,255,.72); font-size: 11px; margin-top: 3px; }
+        .ref-body { padding: 0 10px 16px; }
+        .ref-group { margin-top: 14px; }
+        .ref-group-title {
+            font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+            color: var(--text2); margin-bottom: 8px; padding-left: 2px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .ref-group-title::after { content: ''; flex: 1; height: 1px; background: var(--sep); }
+        .ref-sub-lbl { font-size: 11px; font-weight: 600; color: var(--p2); margin: 9px 0 5px 2px; }
+        .ref-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+        .ref-cell {
+            background: var(--bg); border-radius: 9px; padding: 7px 3px 5px;
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+        }
+        .ref-zh { font-size: 18px; color: var(--p1); font-weight: 600; line-height: 1; }
+        .ref-py { font-size: 11px; color: var(--text2); font-weight: 500; }
+        .ref-foot { font-size: 10px; color: var(--text2); text-align: center; padding: 10px 6px 0; opacity: .7; line-height: 1.6; }
+
+        /* ── 注音键盘交互 ── */
+        .ref-cell { cursor: pointer; user-select: none; transition: background .15s, transform .12s; }
+        .ref-cell:hover  { background: rgba(79,70,229,.1); }
+        .ref-cell:active { background: rgba(79,70,229,.22); transform: scale(.9); }
+        .ref-preview {
+            border-bottom: 1px solid var(--sep);
+            padding: 10px 14px; display: none;
+            background: rgba(79,70,229,.05);
+        }
+        .ref-preview.visible { display: block; }
+        .ref-preview-in  { font-size: 18px; color: var(--p1); font-weight: 700; letter-spacing: .05em; }
+        .ref-preview-out { font-size: 14px; color: var(--text2); margin-top: 4px; }
+        .ref-hint { font-size: 11px; color: var(--text2); text-align: center; padding: 10px 4px 2px; opacity: .75; }
+        .ref-kbd-row { display: flex; gap: 8px; margin: 6px 0 12px; }
+        .ref-kbd-space {
+            flex: 1; padding: 11px 8px;
+            background: var(--grad); color: #fff; border: none; border-radius: 10px;
+            font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer;
+            transition: opacity .15s;
+        }
+        .ref-kbd-space:active { opacity: .8; }
+        .ref-kbd-del {
+            padding: 11px 18px; background: var(--bg); color: var(--text1);
+            border: none; border-radius: 10px;
+            font-size: 18px; font-family: inherit; cursor: pointer;
+            transition: opacity .15s;
+        }
+        .ref-kbd-del:active { opacity: .6; }
+
+        /* ── 多音字提示框 ── */
+        .poly-box {
+            margin-top: 10px; padding: 10px 14px;
+            background: rgba(79,70,229,.08);
+            border-radius: 10px; border-left: 3px solid var(--p1);
+            display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+        }
+        .poly-char { font-size: 20px; font-weight: 700; color: var(--text1); }
+        .poly-lbl {
+            font-size: 11px; font-weight: 700; color: var(--p2);
+            background: rgba(124,58,237,.12); padding: 2px 8px;
+            border-radius: 10px; letter-spacing: .06em;
+        }
+        .poly-readings { display: flex; align-items: center; flex-wrap: wrap; gap: 2px; }
+        .poly-r { font-size: 16px; color: var(--text2); padding: 2px 4px; }
+        .poly-r-main { color: var(--p1); font-weight: 700; }
+        .poly-sep { color: var(--sep); font-size: 13px; }
     </style>
 </head>
 <body>
 
 <div id="splash">
     <div class="sp-icon"><b>拼</b><span>音</span></div>
-    <h1>汉字转拼音</h1>
-    <p>快速 · 准确 · 离线可用</p>
+    <h1 data-i18n="splashTitle">汉字转拼音</h1>
+    <p data-i18n="splashSub">快速 · 准确 · 离线可用</p>
     <div class="sp-dots"><i></i><i></i><i></i></div>
 </div>
 
 <header>
-    <h1>汉字转拼音</h1>
-    <p>快速、准确的拼音转换工具</p>
+    <button class="dark-btn" id="darkBtn" aria-label="Toggle dark mode">
+        <svg id="darkIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+    </button>
+    <div class="hdr-center">
+        <h1 data-i18n="appTitle">汉字转拼音</h1>
+        <p data-i18n="appSub">快速、准确的拼音转换工具</p>
+    </div>
+    <button class="lang-btn" id="langBtn" aria-label="Language">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/>
+        </svg>
+    </button>
 </header>
+
+<div id="langBackdrop" class="lang-backdrop" hidden></div>
+<div id="langMenu" class="lang-menu" hidden>
+    <div class="lang-opt" data-lang="zh-CN">🇨🇳 简体中文</div>
+    <div class="lang-opt" data-lang="en">🇺🇸 English</div>
+    <div class="lang-opt" data-lang="ja">🇯🇵 日本語</div>
+    <div class="lang-opt" data-lang="ko">🇰🇷 한국어</div>
+</div>
 
 <main>
     <div class="card">
-        <div class="lbl">输入汉字</div>
-        <textarea id="inputText" placeholder="请输入要转换的汉字…&#10;例如：你好世界"></textarea>
+        <div class="lbl" data-i18n="inputLabel">输入汉字</div>
+        <textarea id="inputText" data-i18n="inputPlaceholder" placeholder="请输入要转换的汉字…&#10;例如：你好世界"></textarea>
     </div>
 
     <button class="btn-main" id="convertBtn">
         <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
         </svg>
-        开始转换
+        <span data-i18n="convertBtn">开始转换</span>
     </button>
 
     <div class="btn-row">
-        <button class="btn-sec" id="clearBtn">🗑️ 清除</button>
-        <button class="btn-sec" id="copyBtn">📋 复制拼音</button>
+        <button class="btn-sec" id="clearBtn" data-i18n="clearBtn">🗑️ 清除</button>
+        <button class="btn-sec" id="copyBtn" data-i18n="copyBtn">📋 复制拼音</button>
     </div>
 
     <div class="opt-card">
         <div class="opt-row">
-            <span class="opt-lbl">显示声调</span>
+            <span class="opt-lbl" data-i18n="optTone">显示声调</span>
             <label class="tog">
                 <input type="checkbox" id="showTone" checked>
                 <div class="tog-track"></div><div class="tog-thumb"></div>
             </label>
         </div>
         <div class="opt-row">
-            <span class="opt-lbl">拼音风格</span>
+            <span class="opt-lbl" data-i18n="optStyle">拼音风格</span>
             <select class="sel" id="toneType">
-                <option value="symbol">符号 nǐ hǎo</option>
-                <option value="num">数字 ni3 hao3</option>
-                <option value="none">无声调 ni hao</option>
+                <option value="symbol" data-i18n="optStyleSymbol">符号 nǐ hǎo</option>
+                <option value="num" data-i18n="optStyleNum">数字 ni3 hao3</option>
+                <option value="none" data-i18n="optStyleNone">无声调 ni hao</option>
             </select>
+        </div>
+        <div class="opt-row">
+            <span class="opt-lbl" data-i18n="optAnnotate">对照视图（汉字注音）</span>
+            <label class="tog">
+                <input type="checkbox" id="annotateMode">
+                <div class="tog-track"></div><div class="tog-thumb"></div>
+            </label>
         </div>
     </div>
 
     <div class="card">
-        <div class="lbl">拼音结果</div>
-        <div id="outputText"><span class="ph">转换后的拼音将显示在这里…</span></div>
+        <div class="card-hdr">
+            <div class="lbl" data-i18n="outputLabel">拼音结果</div>
+            <button class="star-btn" id="starBtn" aria-label="Favorite">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </button>
+        </div>
+        <div id="outputText"><span class="ph" data-i18n="outputPh">转换后的拼音将显示在这里…</span></div>
     </div>
 
     <div class="stats">
-        <div class="stat"><div class="stat-v" id="charCount">0</div><div class="stat-l">字符数</div></div>
-        <div class="stat"><div class="stat-v" id="hanziCount">0</div><div class="stat-l">汉字数</div></div>
-        <div class="stat"><div class="stat-v" id="pinyinCount">0</div><div class="stat-l">拼音数</div></div>
+        <div class="stat"><div class="stat-v" id="charCount">0</div><div class="stat-l" data-i18n="statChars">字符数</div></div>
+        <div class="stat"><div class="stat-v" id="hanziCount">0</div><div class="stat-l" data-i18n="statHanzi">汉字数</div></div>
+        <div class="stat"><div class="stat-v" id="pinyinCount">0</div><div class="stat-l" data-i18n="statPinyin">拼音数</div></div>
+    </div>
+
+    <div class="hist-card">
+        <div class="hist-header">
+            <span class="hist-title" data-i18n="histTitle">转换历史</span>
+            <button class="hist-clear" id="clearHistBtn" data-i18n="histClear">清除历史</button>
+        </div>
+        <div id="histList"><div class="hist-empty" data-i18n="histEmpty">暂无历史记录</div></div>
+    </div>
+
+    <div class="hist-card">
+        <div class="hist-header">
+            <span class="hist-title" data-i18n="favTitle">收藏夹</span>
+            <button class="hist-clear" id="clearFavBtn" data-i18n="favClear">清除</button>
+        </div>
+        <div id="favList"><div class="hist-empty" data-i18n="favEmpty">暂无收藏词汇</div></div>
+    </div>
+
+    <!-- 注音符号 ↔ 拼音 对照表 -->
+    <div class="ref-card">
+        <div class="ref-banner">
+            <div class="ref-banner-title" data-i18n="refTitle">注音符号 ↔ 拼音 对照表</div>
+            <div class="ref-banner-sub" data-i18n="refSub">Zhuyin (BoPoMoFo) · Pinyin Reference Chart</div>
+        </div>
+        <div class="ref-preview" id="refPreview">
+            <div class="ref-preview-in" id="refPreviewIn"></div>
+            <div class="ref-preview-out" id="refPreviewOut"></div>
+        </div>
+        <div class="ref-body">
+            <div class="ref-hint" data-i18n="zhuyinHint">点击注音符号可将其加入输入框</div>
+            <div class="ref-kbd-row">
+                <button class="ref-kbd-space" id="zhuyinSpace" data-i18n="zhuyinSpace">⎵ 空格</button>
+                <button class="ref-kbd-del" id="zhuyinDel">⌫</button>
+            </div>
+
+            <!-- 声母 21 个 -->
+            <div class="ref-group">
+                <div class="ref-group-title" data-i18n="refInitials">声母 Initials</div>
+                <div class="ref-grid">
+                    <div class="ref-cell"><span class="ref-zh">ㄅ</span><span class="ref-py">b</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄆ</span><span class="ref-py">p</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄇ</span><span class="ref-py">m</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄈ</span><span class="ref-py">f</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄉ</span><span class="ref-py">d</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄊ</span><span class="ref-py">t</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄋ</span><span class="ref-py">n</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄌ</span><span class="ref-py">l</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄍ</span><span class="ref-py">g</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄎ</span><span class="ref-py">k</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄏ</span><span class="ref-py">h</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄐ</span><span class="ref-py">j</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄑ</span><span class="ref-py">q</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄒ</span><span class="ref-py">x</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄓ</span><span class="ref-py">zh</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄔ</span><span class="ref-py">ch</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄕ</span><span class="ref-py">sh</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄖ</span><span class="ref-py">r</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄗ</span><span class="ref-py">z</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄘ</span><span class="ref-py">c</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄙ</span><span class="ref-py">s</span></div>
+                </div>
+            </div>
+
+            <!-- 韵母 16 个 -->
+            <div class="ref-group">
+                <div class="ref-group-title" data-i18n="refFinals">韵母 Finals</div>
+                <div class="ref-grid">
+                    <div class="ref-cell"><span class="ref-zh">ㄚ</span><span class="ref-py">a</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄛ</span><span class="ref-py">o</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄜ</span><span class="ref-py">e</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄝ</span><span class="ref-py">ê</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄞ</span><span class="ref-py">ai</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄟ</span><span class="ref-py">ei</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄠ</span><span class="ref-py">ao</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄡ</span><span class="ref-py">ou</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄢ</span><span class="ref-py">an</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄣ</span><span class="ref-py">en</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄤ</span><span class="ref-py">ang</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄥ</span><span class="ref-py">eng</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄦ</span><span class="ref-py">er</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧ</span><span class="ref-py">yi</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨ</span><span class="ref-py">wu</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄩ</span><span class="ref-py">yu</span></div>
+                </div>
+            </div>
+
+            <!-- 结合韵母 -->
+            <div class="ref-group">
+                <div class="ref-group-title" data-i18n="refCompound">结合韵母 Compound Finals</div>
+
+                <div class="ref-sub-lbl" data-i18n="refISeries">ㄧ (i) 系列</div>
+                <div class="ref-grid">
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄚ</span><span class="ref-py">ya</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄛ</span><span class="ref-py">yo</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄝ</span><span class="ref-py">ye</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄠ</span><span class="ref-py">yao</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄡ</span><span class="ref-py">you</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄢ</span><span class="ref-py">yan</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄣ</span><span class="ref-py">yin</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄤ</span><span class="ref-py">yang</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄧㄥ</span><span class="ref-py">ying</span></div>
+                </div>
+
+                <div class="ref-sub-lbl" data-i18n="refUSeries">ㄨ (u) 系列</div>
+                <div class="ref-grid">
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄚ</span><span class="ref-py">wa</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄛ</span><span class="ref-py">wo</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄞ</span><span class="ref-py">wai</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄟ</span><span class="ref-py">wei</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄢ</span><span class="ref-py">wan</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄣ</span><span class="ref-py">wen</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄤ</span><span class="ref-py">wang</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄨㄥ</span><span class="ref-py">weng</span></div>
+                </div>
+
+                <div class="ref-sub-lbl" data-i18n="refUuSeries">ㄩ (ü) 系列</div>
+                <div class="ref-grid">
+                    <div class="ref-cell"><span class="ref-zh">ㄩㄝ</span><span class="ref-py">yue</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄩㄢ</span><span class="ref-py">yuan</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄩㄣ</span><span class="ref-py">yun</span></div>
+                    <div class="ref-cell"><span class="ref-zh">ㄩㄥ</span><span class="ref-py">yong</span></div>
+                </div>
+            </div>
+
+            <div class="ref-foot" data-i18n-html="refFoot">接声母时：ㄧ→i（如 ㄅㄧ→bī）　ㄨ→u（如 ㄉㄨ→dū）　ㄩ→ü（如 ㄋㄩ→nǚ）<br>ㄧㄡ→iu、ㄨㄟ→ui、ㄨㄣ→un（省略写法）</div>
+        </div>
     </div>
 </main>
 
 <div id="toast"></div>
 
 <script>
+/* ── i18n ── */
+var I18N = {
+  'zh-CN': {
+    appTitle:'汉字转拼音', appSub:'快速、准确的拼音转换工具',
+    splashTitle:'汉字转拼音', splashSub:'快速 · 准确 · 离线可用',
+    inputLabel:'输入汉字', inputPlaceholder:'请输入要转换的汉字…\n例如：你好世界',
+    convertBtn:'开始转换', clearBtn:'🗑️ 清除', copyBtn:'📋 复制拼音',
+    optTone:'显示声调', optStyle:'拼音风格',
+    optStyleSymbol:'符号 nǐ hǎo', optStyleNum:'数字 ni3 hao3', optStyleNone:'无声调 ni hao',
+    optAnnotate:'对照视图（汉字注音）',
+    outputLabel:'拼音结果', outputPh:'转换后的拼音将显示在这里…',
+    statChars:'字符数', statHanzi:'汉字数', statPinyin:'拼音数',
+    histTitle:'转换历史', histClear:'清除历史', histEmpty:'暂无历史记录',
+    favTitle:'收藏夹', favClear:'清除', favEmpty:'暂无收藏词汇',
+    toastNoLib:'⚠️ 拼音库未加载', toastNoInput:'请先输入汉字',
+    toastDone:'✓ 转换完成', toastCleared:'已清除',
+    toastCopied:'✓ 已复制到剪贴板', toastNoCopy:'没有可复制的内容',
+    toastHistCleared:'历史记录已清除', toastHistRestored:'已恢复历史记录',
+    toastFavSaved:'✓ 已加入收藏', toastFavRemoved:'已取消收藏',
+    toastError:'转换出错，请重试',
+    refTitle:'注音符号 ↔ 拼音 对照表', refSub:'Zhuyin (BoPoMoFo) · Pinyin Reference Chart',
+    refInitials:'声母 Initials', refFinals:'韵母 Finals', refCompound:'结合韵母 Compound Finals',
+    refISeries:'ㄧ (i) 系列', refUSeries:'ㄨ (u) 系列', refUuSeries:'ㄩ (ü) 系列',
+    refFoot:'接声母时：ㄧ→i（如 ㄅㄧ→bī）　ㄨ→u（如 ㄉㄨ→dū）　ㄩ→ü（如 ㄋㄩ→nǚ）\nㄧㄡ→iu、ㄨㄟ→ui、ㄨㄣ→un（省略写法）',
+    zhuyinHint:'点击注音符号可将其加入输入框', zhuyinSpace:'⎵ 空格'
+  },
+  'en': {
+    appTitle:'Hanzi to Pinyin', appSub:'Fast & accurate Pinyin converter',
+    splashTitle:'Hanzi to Pinyin', splashSub:'Fast · Accurate · Offline',
+    inputLabel:'Enter Chinese Characters', inputPlaceholder:'Type Chinese characters here…\nExample: 你好世界',
+    convertBtn:'Convert', clearBtn:'🗑️ Clear', copyBtn:'📋 Copy Pinyin',
+    optTone:'Show Tones', optStyle:'Pinyin Style',
+    optStyleSymbol:'Symbol nǐ hǎo', optStyleNum:'Number ni3 hao3', optStyleNone:'No Tone ni hao',
+    optAnnotate:'Annotated View',
+    outputLabel:'Pinyin Result', outputPh:'Pinyin will appear here…',
+    statChars:'Characters', statHanzi:'Hanzi', statPinyin:'Syllables',
+    histTitle:'History', histClear:'Clear', histEmpty:'No history yet',
+    favTitle:'Favorites', favClear:'Clear', favEmpty:'No saved items',
+    toastNoLib:'⚠️ Library not loaded', toastNoInput:'Please enter Chinese characters',
+    toastDone:'✓ Converted', toastCleared:'Cleared',
+    toastCopied:'✓ Copied to clipboard', toastNoCopy:'Nothing to copy',
+    toastHistCleared:'History cleared', toastHistRestored:'History restored',
+    toastFavSaved:'✓ Saved to favorites', toastFavRemoved:'Removed from favorites',
+    toastError:'Conversion failed, please retry',
+    refTitle:'Zhuyin ↔ Pinyin Reference', refSub:'Zhuyin (BoPoMoFo) · Pinyin Reference Chart',
+    refInitials:'Initials 声母', refFinals:'Finals 韵母', refCompound:'Compound Finals 结合韵母',
+    refISeries:'ㄧ (i) Series', refUSeries:'ㄨ (u) Series', refUuSeries:'ㄩ (ü) Series',
+    refFoot:'With initials: ㄧ→i (e.g. ㄅㄧ→bī)　ㄨ→u (e.g. ㄉㄨ→dū)　ㄩ→ü (e.g. ㄋㄩ→nǚ)\nShortened forms: ㄧㄡ→iu, ㄨㄟ→ui, ㄨㄣ→un',
+    zhuyinHint:'Tap a Zhuyin symbol to add it to the input', zhuyinSpace:'⎵ Space'
+  },
+  'ja': {
+    appTitle:'漢字ピンイン変換', appSub:'素早く・正確・オフライン対応',
+    splashTitle:'漢字ピンイン変換', splashSub:'素早く · 正確 · オフライン',
+    inputLabel:'漢字を入力', inputPlaceholder:'変換したい漢字を入力…\n例：你好世界',
+    convertBtn:'変換する', clearBtn:'🗑️ クリア', copyBtn:'📋 コピー',
+    optTone:'声調を表示', optStyle:'ピンインスタイル',
+    optStyleSymbol:'記号 nǐ hǎo', optStyleNum:'数字 ni3 hao3', optStyleNone:'声調なし ni hao',
+    optAnnotate:'ルビ表示',
+    outputLabel:'ピンイン結果', outputPh:'ピンインがここに表示されます…',
+    statChars:'文字数', statHanzi:'漢字数', statPinyin:'音節数',
+    histTitle:'変換履歴', histClear:'履歴を消去', histEmpty:'履歴はまだありません',
+    favTitle:'お気に入り', favClear:'消去', favEmpty:'お気に入りはまだありません',
+    toastNoLib:'⚠️ ライブラリ未読込', toastNoInput:'漢字を入力してください',
+    toastDone:'✓ 変換完了', toastCleared:'クリアしました',
+    toastCopied:'✓ コピーしました', toastNoCopy:'コピーする内容がありません',
+    toastHistCleared:'履歴を消去しました', toastHistRestored:'履歴を復元しました',
+    toastFavSaved:'✓ お気に入りに追加', toastFavRemoved:'お気に入りから削除',
+    toastError:'変換エラー、再試行してください',
+    refTitle:'注音符号 ↔ ピンイン 対照表', refSub:'Zhuyin (BoPoMoFo) · Pinyin Reference Chart',
+    refInitials:'声母 Initials', refFinals:'韻母 Finals', refCompound:'複合韻母 Compound Finals',
+    refISeries:'ㄧ (i) 系列', refUSeries:'ㄨ (u) 系列', refUuSeries:'ㄩ (ü) 系列',
+    refFoot:'声母と組み合わせ：ㄧ→i（例 ㄅㄧ→bī）　ㄨ→u（例 ㄉㄨ→dū）　ㄩ→ü（例 ㄋㄩ→nǚ）\nㄧㄡ→iu、ㄨㄟ→ui、ㄨㄣ→un（省略形）',
+    zhuyinHint:'注音符号をタップして入力欄に追加', zhuyinSpace:'⎵ スペース'
+  },
+  'ko': {
+    appTitle:'한자 병음 변환기', appSub:'빠르고 정확한 병음 변환 도구',
+    splashTitle:'한자 병음 변환기', splashSub:'빠르게 · 정확하게 · 오프라인',
+    inputLabel:'한자 입력', inputPlaceholder:'변환할 한자를 입력하세요…\n예시：你好世界',
+    convertBtn:'변환하기', clearBtn:'🗑️ 지우기', copyBtn:'📋 병음 복사',
+    optTone:'성조 표시', optStyle:'병음 스타일',
+    optStyleSymbol:'기호 nǐ hǎo', optStyleNum:'숫자 ni3 hao3', optStyleNone:'성조 없음 ni hao',
+    optAnnotate:'대조 보기',
+    outputLabel:'병음 결과', outputPh:'변환된 병음이 여기에 표시됩니다…',
+    statChars:'문자 수', statHanzi:'한자 수', statPinyin:'음절 수',
+    histTitle:'변환 기록', histClear:'기록 지우기', histEmpty:'기록이 없습니다',
+    favTitle:'즐겨찾기', favClear:'지우기', favEmpty:'저장된 항목이 없습니다',
+    toastNoLib:'⚠️ 라이브러리 로드 실패', toastNoInput:'한자를 입력해 주세요',
+    toastDone:'✓ 변환 완료', toastCleared:'지워졌습니다',
+    toastCopied:'✓ 복사되었습니다', toastNoCopy:'복사할 내용이 없습니다',
+    toastHistCleared:'기록이 지워졌습니다', toastHistRestored:'기록을 불러왔습니다',
+    toastFavSaved:'✓ 즐겨찾기에 추가됨', toastFavRemoved:'즐겨찾기에서 제거됨',
+    toastError:'변환 오류, 다시 시도해주세요',
+    refTitle:'주음부호 ↔ 병음 대조표', refSub:'Zhuyin (BoPoMoFo) · Pinyin Reference Chart',
+    refInitials:'성모 Initials', refFinals:'운모 Finals', refCompound:'결합 운모 Compound Finals',
+    refISeries:'ㄧ (i) 계열', refUSeries:'ㄨ (u) 계열', refUuSeries:'ㄩ (ü) 계열',
+    refFoot:'성모와 결합 시：ㄧ→i（예 ㄅㄧ→bī）　ㄨ→u（예 ㄉㄨ→dū）　ㄩ→ü（예 ㄋㄩ→nǚ）\nㄧㄡ→iu、ㄨㄟ→ui、ㄨㄣ→un（생략형）',
+    zhuyinHint:'주음부호를 탭하여 입력란에 추가', zhuyinSpace:'⎵ 공백'
+  }
+};
+
+var currentLang = 'zh-CN';
+
+function t(key) {
+    return (I18N[currentLang] || I18N['zh-CN'])[key] || key;
+}
+
+function applyLang(lang) {
+    currentLang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var val = t(el.dataset.i18n);
+        if (el.tagName === 'TEXTAREA') {
+            el.placeholder = val.replace(/\\n/g, '\n');
+        } else if (el.tagName === 'OPTION') {
+            el.textContent = val;
+        } else {
+            el.textContent = val;
+        }
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el) {
+        el.innerHTML = t(el.dataset.i18nHtml).replace(/\n/g, '<br>');
+    });
+    document.documentElement.lang = lang;
+    document.querySelectorAll('.lang-opt').forEach(function(opt) {
+        opt.classList.toggle('active', opt.dataset.lang === lang);
+    });
+    if (!lastPlainResult) {
+        outputEl.innerHTML = '<span class="ph">' + t('outputPh') + '</span>';
+    }
+    try { localStorage.setItem('pinyin_lang', lang); } catch(e) {}
+}
+
 /* ── 启动画面 ── */
 window.addEventListener('load', function() {
     setTimeout(function() {
@@ -281,22 +720,77 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(function(){});
 }
 
-/* ── 核心逻辑 ── */
-var pinyin = (typeof pinyinPro !== 'undefined') ? pinyinPro.pinyin : null;
-
-var inputEl    = document.getElementById('inputText');
-var outputEl   = document.getElementById('outputText');
-var convertBtn = document.getElementById('convertBtn');
-var clearBtn   = document.getElementById('clearBtn');
-var copyBtn    = document.getElementById('copyBtn');
-var showToneEl = document.getElementById('showTone');
-var toneTypeEl = document.getElementById('toneType');
-var toastEl    = document.getElementById('toast');
-var charEl     = document.getElementById('charCount');
-var hanziEl    = document.getElementById('hanziCount');
-var pinyinEl   = document.getElementById('pinyinCount');
+/* ── DOM refs ── */
+var pinyinFn       = (typeof pinyinPro !== 'undefined') ? pinyinPro.pinyin : null;
+var inputEl        = document.getElementById('inputText');
+var outputEl       = document.getElementById('outputText');
+var convertBtn     = document.getElementById('convertBtn');
+var clearBtn       = document.getElementById('clearBtn');
+var copyBtn        = document.getElementById('copyBtn');
+var showToneEl     = document.getElementById('showTone');
+var toneTypeEl     = document.getElementById('toneType');
+var annotateModeEl = document.getElementById('annotateMode');
+var toastEl        = document.getElementById('toast');
+var charEl         = document.getElementById('charCount');
+var hanziEl        = document.getElementById('hanziCount');
+var pinyinEl       = document.getElementById('pinyinCount');
+var histListEl     = document.getElementById('histList');
+var clearHistBtn   = document.getElementById('clearHistBtn');
+var favListEl      = document.getElementById('favList');
+var clearFavBtn    = document.getElementById('clearFavBtn');
+var langBtnEl      = document.getElementById('langBtn');
+var langMenuEl     = document.getElementById('langMenu');
+var langBackdropEl = document.getElementById('langBackdrop');
+var darkBtnEl      = document.getElementById('darkBtn');
+var darkIconEl     = document.getElementById('darkIcon');
+var starBtnEl      = document.getElementById('starBtn');
 var toastTimer;
+var lastPlainResult = '';
+var HIST_KEY = 'pinyin_history';
+var FAV_KEY  = 'pinyin_favs';
 
+/* ── 深色模式 ── */
+var MOON = '<path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>';
+var SUN  = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+
+function isCurrentlyDark() {
+    var r = document.documentElement;
+    if (r.classList.contains('force-dark'))  return true;
+    if (r.classList.contains('force-light')) return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
+function updateDarkBtn() { darkIconEl.innerHTML = isCurrentlyDark() ? SUN : MOON; }
+function toggleDark() {
+    var dark = !isCurrentlyDark();
+    document.documentElement.classList.remove('force-dark', 'force-light');
+    document.documentElement.classList.add(dark ? 'force-dark' : 'force-light');
+    updateDarkBtn();
+    try { localStorage.setItem('pinyin_dark', dark ? 'dark' : 'light'); } catch(e) {}
+}
+function initDark() {
+    try {
+        var d = localStorage.getItem('pinyin_dark');
+        if (d === 'dark')  document.documentElement.classList.add('force-dark');
+        if (d === 'light') document.documentElement.classList.add('force-light');
+    } catch(e) {}
+    updateDarkBtn();
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateDarkBtn);
+}
+darkBtnEl.addEventListener('click', toggleDark);
+
+/* ── 语言切换 ── */
+function openLangMenu() { langMenuEl.hidden = false; langBackdropEl.hidden = false; }
+function closeLangMenu() { langMenuEl.hidden = true;  langBackdropEl.hidden = true; }
+langBtnEl.addEventListener('click', function(e) {
+    e.stopPropagation();
+    langMenuEl.hidden ? openLangMenu() : closeLangMenu();
+});
+langBackdropEl.addEventListener('click', closeLangMenu);
+document.querySelectorAll('.lang-opt').forEach(function(opt) {
+    opt.addEventListener('click', function() { applyLang(opt.dataset.lang); closeLangMenu(); });
+});
+
+/* ── Toast ── */
 function showToast(msg) {
     clearTimeout(toastTimer);
     toastEl.textContent = msg;
@@ -304,6 +798,13 @@ function showToast(msg) {
     toastTimer = setTimeout(function() { toastEl.classList.remove('on'); }, 2200);
 }
 
+/* ── 转换核心 ── */
+function getTone() {
+    if (!showToneEl.checked) return 'none';
+    if (toneTypeEl.value === 'num')  return 'num';
+    if (toneTypeEl.value === 'none') return 'none';
+    return 'symbol';
+}
 function updateStats(text, result) {
     charEl.textContent  = text.length;
     var hz = text.match(/[一-龥]/g);
@@ -311,61 +812,331 @@ function updateStats(text, result) {
     var py = result ? result.trim().split(/\s+/).filter(Boolean) : [];
     pinyinEl.textContent = py.length;
 }
+/* ── HTML 转义 ── */
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
 
-function doConvert() {
-    if (!pinyin) { showToast('⚠️ 拼音库未加载，请检查网络'); return; }
-    var text = inputEl.value.trim();
-    if (!text) { showToast('请先输入汉字'); return; }
-    convertBtn.classList.add('pulsing');
-    var showT = showToneEl.checked;
-    var tone = 'symbol';
-    if (!showT)                          tone = 'none';
-    else if (toneTypeEl.value === 'num') tone = 'num';
-    else if (toneTypeEl.value === 'none')tone = 'none';
-    try {
-        var result = pinyin(text, { toneType: tone, type: 'string', nonZh: 'consecutive' });
-        outputEl.textContent = result;
-        updateStats(text, result);
-        showToast('✓ 转换完成');
-    } catch(e) {
-        showToast('转换出错，请重试');
+/* ── 对照视图：整句传入，按位置映射拼音（修复多音字上下文问题）── */
+function buildAnnotated(text, tone) {
+    // 第一步：把文中所有汉字合成一个字符串，整体传入拼音库（保留词语上下文）
+    var zhOnly = '';
+    for (var i = 0; i < text.length; i++) {
+        if (/[一-龥]/.test(text[i])) zhOnly += text[i];
     }
+    // 整体转换得到逐字拼音数组（例如「音乐」→ ['yīn','yuè'] 而非 ['yīn','lè']）
+    var pinyinArr = zhOnly.length > 0
+        ? (pinyinFn(zhOnly, { toneType: tone, type: 'array' }) || [])
+        : [];
+
+    var html = '';
+    var pyIdx = 0;
+    for (var i = 0; i < text.length; i++) {
+        var ch = text[i];
+        if (/[一-龥]/.test(ch)) {
+            var py = pinyinArr[pyIdx++] || '';
+            html += '<ruby>' + escHtml(ch) + '<rt>' + escHtml(py) + '</rt></ruby>';
+        } else if (ch === '\n') {
+            html += '<br>';
+        } else {
+            html += escHtml(ch);
+        }
+    }
+    return '<div class="ruby-wrap">' + html + '</div>';
+}
+
+/* ── 多音字：获取单字的全部读音 ── */
+function getMultiReadings(char) {
+    try {
+        var all = pinyinFn(char, { multiple: true, toneType: 'symbol', type: 'array' });
+        return Array.isArray(all) ? all : [];
+    } catch(e) { return []; }
+}
+function buildPolyHtml(char, readings) {
+    if (!readings || readings.length <= 1) return '';
+    var items = readings.map(function(r, i) {
+        return '<span class="poly-r' + (i === 0 ? ' poly-r-main' : '') + '">' + escHtml(r) + '</span>';
+    }).join('<span class="poly-sep"> / </span>');
+    return '<div class="poly-box">' +
+        '<span class="poly-char">' + escHtml(char) + '</span>' +
+        '<span class="poly-lbl">多音字</span>' +
+        '<span class="poly-readings">' + items + '</span>' +
+        '</div>';
+}
+
+function doConvert(silent) {
+    if (!pinyinFn) { showToast(t('toastNoLib')); return; }
+    var text = inputEl.value.trim();
+    if (!text) { showToast(t('toastNoInput')); return; }
+    convertBtn.classList.add('pulsing');
+    var tone = getTone();
+    try {
+        var hasZh = hasZhuyin(text);
+        // 整句传入，让库自身的分词能力处理多音字上下文
+        var plain = hasZh ? convertMixed(text, tone)
+                          : pinyinFn(text, { toneType: tone, type: 'string', nonZh: 'consecutive' });
+        lastPlainResult = plain;
+
+        // 检测多音字：仅当输入为单个孤立汉字时列出全部读音
+        var hanziList = hasZh ? [] : (text.match(/[一-龥]/g) || []);
+        var polyHtml = '';
+        if (hanziList.length === 1) {
+            // 单字输入 → 查询所有可能读音
+            var allRd = getMultiReadings(hanziList[0]);
+            polyHtml = buildPolyHtml(hanziList[0], allRd);
+        }
+        // 多字词组 → 只显示精准上下文读音（不附加多音提示）
+
+        if (annotateModeEl.checked && !hasZh) {
+            outputEl.innerHTML = buildAnnotated(text, tone) + polyHtml;
+        } else if (polyHtml) {
+            outputEl.innerHTML = '<span>' + escHtml(plain) + '</span>' + polyHtml;
+        } else {
+            outputEl.textContent = plain;
+        }
+        updateStats(text, plain);
+        if (!hasZh) saveHistory(text, plain);
+        updateStarBtn(text);
+        updateRefPreview(text, plain);
+        if (silent !== true) showToast(t('toastDone'));
+    } catch(e) { showToast(t('toastError')); }
     convertBtn.classList.remove('pulsing');
 }
-
 function doClear() {
     inputEl.value = '';
-    outputEl.innerHTML = '<span class="ph">转换后的拼音将显示在这里…</span>';
+    outputEl.innerHTML = '<span class="ph">' + t('outputPh') + '</span>';
+    lastPlainResult = '';
     updateStats('', '');
+    updateStarBtn('');
+    updateRefPreview('', '');
     inputEl.focus();
-    showToast('已清除');
+    showToast(t('toastCleared'));
 }
-
 async function doCopy() {
-    var text = outputEl.textContent.trim();
-    if (!text || text === '转换后的拼音将显示在这里…') { showToast('没有可复制的内容'); return; }
+    if (!lastPlainResult) { showToast(t('toastNoCopy')); return; }
     try {
-        await navigator.clipboard.writeText(text);
-        showToast('✓ 已复制到剪贴板');
+        await navigator.clipboard.writeText(lastPlainResult);
+        showToast(t('toastCopied'));
     } catch(e) {
         var tmp = document.createElement('textarea');
-        tmp.value = text; tmp.style.cssText = 'position:fixed;opacity:0';
+        tmp.value = lastPlainResult; tmp.style.cssText = 'position:fixed;opacity:0';
         document.body.appendChild(tmp); tmp.select();
         document.execCommand('copy'); document.body.removeChild(tmp);
-        showToast('✓ 已复制到剪贴板');
+        showToast(t('toastCopied'));
     }
 }
 
+/* ── 历史记录 ── */
+function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveHistory(inp, out) {
+    var h = loadHistory();
+    h.unshift({ input: inp, output: out, time: Date.now() });
+    if (h.length > 10) h.length = 10;
+    try { localStorage.setItem(HIST_KEY, JSON.stringify(h)); } catch(e) {}
+    renderHistory(h);
+}
+function formatTime(ts) {
+    var d = new Date(ts), pad = function(n){ return n<10?'0'+n:n; };
+    return (d.getMonth()+1)+'/'+d.getDate()+' '+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function renderHistory(history) {
+    if (!history || !history.length) {
+        histListEl.innerHTML = '<div class="hist-empty">'+t('histEmpty')+'</div>'; return;
+    }
+    histListEl.innerHTML = history.map(function(h, idx) {
+        var inp = h.input.length>30 ? h.input.slice(0,30)+'…' : h.input;
+        var out = h.output.length>50 ? h.output.slice(0,50)+'…' : h.output;
+        return '<div class="hist-item" data-idx="'+idx+'">' +
+            '<div class="hist-in">'+inp.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>' +
+            '<div class="hist-out">'+out.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>' +
+            '<div class="hist-time">'+formatTime(h.time)+'</div></div>';
+    }).join('');
+    histListEl.querySelectorAll('.hist-item').forEach(function(el) {
+        el.addEventListener('click', function() {
+            var h = loadHistory()[+el.dataset.idx];
+            if (!h) return;
+            inputEl.value = h.input; lastPlainResult = h.output;
+            outputEl.textContent = h.output; updateStats(h.input, h.output);
+            updateStarBtn(h.input); showToast(t('toastHistRestored'));
+        });
+    });
+}
+clearHistBtn.addEventListener('click', function() {
+    try { localStorage.removeItem(HIST_KEY); } catch(e) {}
+    renderHistory([]); showToast(t('toastHistCleared'));
+});
+
+/* ── 收藏夹 ── */
+function loadFavs() {
+    try { return JSON.parse(localStorage.getItem(FAV_KEY) || '[]'); } catch(e) { return []; }
+}
+function saveFavs(favs) { try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch(e) {} }
+function isFavorited(text) { return loadFavs().some(function(f){ return f.input === text; }); }
+function updateStarBtn(text) {
+    var on = !!(text && isFavorited(text));
+    starBtnEl.classList.toggle('active', on);
+    var svg = starBtnEl.querySelector('svg');
+    svg.setAttribute('fill',   on ? '#F59E0B' : 'none');
+    svg.setAttribute('stroke', on ? '#F59E0B' : 'currentColor');
+}
+function toggleFav() {
+    var text = inputEl.value.trim();
+    if (!text || !lastPlainResult) { showToast(t('toastNoInput')); return; }
+    var favs = loadFavs(), found = -1;
+    favs.forEach(function(f, i) { if (f.input === text) found = i; });
+    if (found >= 0) { favs.splice(found, 1); showToast(t('toastFavRemoved')); }
+    else { favs.unshift({ input: text, output: lastPlainResult, time: Date.now() }); showToast(t('toastFavSaved')); }
+    saveFavs(favs); updateStarBtn(text); renderFavs(favs);
+}
+function renderFavs(favs) {
+    if (!favs || !favs.length) {
+        favListEl.innerHTML = '<div class="hist-empty">'+t('favEmpty')+'</div>'; return;
+    }
+    favListEl.innerHTML = favs.map(function(f, idx) {
+        var inp = f.input.length>30 ? f.input.slice(0,30)+'…' : f.input;
+        var out = f.output.length>50 ? f.output.slice(0,50)+'…' : f.output;
+        return '<div class="fav-item"><div class="fav-content" data-idx="'+idx+'">' +
+            '<div class="fav-in">'+inp.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>' +
+            '<div class="fav-out">'+out.replace(/&/g,'&amp;').replace(/</g,'&lt;')+'</div>' +
+            '</div><button class="fav-del" data-idx="'+idx+'">×</button></div>';
+    }).join('');
+    favListEl.querySelectorAll('.fav-content').forEach(function(el) {
+        el.addEventListener('click', function() {
+            var f = loadFavs()[+el.dataset.idx]; if (!f) return;
+            inputEl.value = f.input; lastPlainResult = f.output;
+            outputEl.textContent = f.output; updateStats(f.input, f.output);
+            updateStarBtn(f.input); showToast(t('toastHistRestored'));
+        });
+    });
+    favListEl.querySelectorAll('.fav-del').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var favs = loadFavs(); favs.splice(+btn.dataset.idx, 1);
+            saveFavs(favs); renderFavs(favs); updateStarBtn(inputEl.value.trim());
+        });
+    });
+}
+starBtnEl.addEventListener('click', toggleFav);
+clearFavBtn.addEventListener('click', function() {
+    saveFavs([]); renderFavs([]); updateStarBtn(inputEl.value.trim());
+    showToast(t('toastFavRemoved'));
+});
+
+/* ── 注音键盘 ── */
+var INITIALS_SET = {
+    'ㄅ':1,'ㄆ':1,'ㄇ':1,'ㄈ':1,'ㄉ':1,'ㄊ':1,'ㄋ':1,'ㄌ':1,
+    'ㄍ':1,'ㄎ':1,'ㄏ':1,'ㄐ':1,'ㄑ':1,'ㄒ':1,
+    'ㄓ':1,'ㄔ':1,'ㄕ':1,'ㄖ':1,'ㄗ':1,'ㄘ':1,'ㄙ':1
+};
+var ZHUYIN_MAP = {
+    'ㄧㄚ':'ya','ㄧㄛ':'yo','ㄧㄝ':'ye','ㄧㄠ':'yao','ㄧㄡ':'you',
+    'ㄧㄢ':'yan','ㄧㄣ':'yin','ㄧㄤ':'yang','ㄧㄥ':'ying',
+    'ㄨㄚ':'wa','ㄨㄛ':'wo','ㄨㄞ':'wai','ㄨㄟ':'wei',
+    'ㄨㄢ':'wan','ㄨㄣ':'wen','ㄨㄤ':'wang','ㄨㄥ':'weng',
+    'ㄩㄝ':'yue','ㄩㄢ':'yuan','ㄩㄣ':'yun','ㄩㄥ':'yong',
+    'ㄅ':'b','ㄆ':'p','ㄇ':'m','ㄈ':'f',
+    'ㄉ':'d','ㄊ':'t','ㄋ':'n','ㄌ':'l',
+    'ㄍ':'g','ㄎ':'k','ㄏ':'h',
+    'ㄐ':'j','ㄑ':'q','ㄒ':'x',
+    'ㄓ':'zh','ㄔ':'ch','ㄕ':'sh','ㄖ':'r',
+    'ㄗ':'z','ㄘ':'c','ㄙ':'s',
+    'ㄚ':'a','ㄛ':'o','ㄜ':'e','ㄝ':'ê',
+    'ㄞ':'ai','ㄟ':'ei','ㄠ':'ao','ㄡ':'ou',
+    'ㄢ':'an','ㄣ':'en','ㄤ':'ang','ㄥ':'eng','ㄦ':'er',
+    'ㄧ':'yi','ㄨ':'wu','ㄩ':'yu'
+};
+function hasZhuyin(text) { return /[㄀-ㄯ]/.test(text); }
+function convertZhuyinStr(str) {
+    var out = [], i = 0;
+    while (i < str.length) {
+        var two = str.slice(i, i + 2);
+        if (two.length === 2 && ZHUYIN_MAP[two]) { out.push(ZHUYIN_MAP[two]); i += 2; }
+        else if (ZHUYIN_MAP[str[i]])              { out.push(ZHUYIN_MAP[str[i]]); i++; }
+        else                                       { out.push(str[i]); i++; }
+    }
+    return out.join('');
+}
+function convertMixed(text, tone) {
+    return text.split(' ').map(function(tok) {
+        if (!tok) return null;
+        if (hasZhuyin(tok)) return convertZhuyinStr(tok);
+        if (/[一-龥]/.test(tok)) return pinyinFn(tok, { toneType: tone, type: 'string', nonZh: 'consecutive' });
+        return tok;
+    }).filter(function(t) { return t !== null; }).join(' ');
+}
+function updateRefPreview(input, output) {
+    var el = document.getElementById('refPreview');
+    if (!el) return;
+    if (input && hasZhuyin(input)) {
+        document.getElementById('refPreviewIn').textContent = input;
+        document.getElementById('refPreviewOut').textContent = output;
+        el.classList.add('visible');
+    } else {
+        el.classList.remove('visible');
+    }
+}
+function appendZhuyin(zh) {
+    var val = inputEl.value;
+    var isInitial = !!INITIALS_SET[zh];
+    if (val.length === 0 || val[val.length - 1] === ' ') {
+        inputEl.value = val + zh;
+    } else if (isInitial) {
+        inputEl.value = val + ' ' + zh;
+    } else {
+        inputEl.value = val + zh;
+    }
+    updateStats(inputEl.value, lastPlainResult);
+    doConvert(true);
+}
+document.querySelectorAll('.ref-cell').forEach(function(cell) {
+    cell.addEventListener('click', function() {
+        var zh = cell.querySelector('.ref-zh').textContent.trim();
+        appendZhuyin(zh);
+    });
+});
+document.getElementById('zhuyinSpace').addEventListener('click', function() {
+    if (inputEl.value.trim()) { inputEl.value += ' '; }
+});
+document.getElementById('zhuyinDel').addEventListener('click', function() {
+    var val = inputEl.value.trimEnd();
+    var lastSpace = val.lastIndexOf(' ');
+    inputEl.value = lastSpace >= 0 ? val.slice(0, lastSpace) : '';
+    if (inputEl.value.trim()) doConvert(true); else doClear();
+});
+
+/* ── 事件绑定 ── */
 convertBtn.addEventListener('click', doConvert);
 clearBtn.addEventListener('click', doClear);
 copyBtn.addEventListener('click', doCopy);
-inputEl.addEventListener('input', function() { updateStats(inputEl.value, outputEl.textContent); });
-showToneEl.addEventListener('change', function() { if (inputEl.value.trim()) doConvert(); });
-toneTypeEl.addEventListener('change', function() { if (inputEl.value.trim()) doConvert(); });
+inputEl.addEventListener('input', function() {
+    updateStats(inputEl.value, lastPlainResult);
+    updateStarBtn(inputEl.value.trim());
+});
+showToneEl.addEventListener('change',    function() { if (inputEl.value.trim()) doConvert(); });
+toneTypeEl.addEventListener('change',    function() { if (inputEl.value.trim()) doConvert(); });
+annotateModeEl.addEventListener('change',function() { if (inputEl.value.trim()) doConvert(); });
 document.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') doConvert();
     if (e.key === 'Escape') doClear();
 });
+
+/* ── Share Target / URL 参数 ── */
+(function() {
+    try {
+        var p = new URLSearchParams(window.location.search);
+        var shared = p.get('text') || p.get('title') || '';
+        if (shared) { inputEl.value = shared.trim(); setTimeout(doConvert, 400); }
+    } catch(e) {}
+})();
+
+/* ── 初始化 ── */
+initDark();
+try { var saved = localStorage.getItem('pinyin_lang'); if (saved && I18N[saved]) currentLang = saved; } catch(e) {}
+applyLang(currentLang);
+renderHistory(loadHistory());
+renderFavs(loadFavs());
 </script>
 </body>
 </html>
